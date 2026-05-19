@@ -1,0 +1,5 @@
+pyaudio
+numpy
+pyyaml
+openwakeword
+faster-whisper

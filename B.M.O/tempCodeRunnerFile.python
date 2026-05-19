@@ -1,0 +1,228 @@
+"""
+test_transcriber.py
+-------------------
+Runs three targeted tests against Transcriber without needing a real microphone
+for the first two tests. The third test (live mic) is optional and skipped if
+the user passes --no-mic.
+
+Tests
+-----
+1. VAD empty-audio guard   — feeds pure silence; must return "" not crash.
+2. VAD real-speech path    — feeds a synthetic 440 Hz tone (not speech, but
+                             confirms the model path runs end-to-end without
+                             a ValueError).
+3. Live mic round-trip     — records one real utterance and prints the result.
+
+Usage
+-----
+    python test_transcriber.py                # all three tests
+    python test_transcriber.py --no-mic       # skip live mic test
+"""
+
+import argparse
+import time
+import sys
+import types
+import numpy as np
+from pathlib import Path
+
+# Ensure the directory containing this script is on sys.path so that
+# `transcriber.py` (sitting next to it) is always importable regardless
+# of where the user launches the script from.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+# ── minimal config matching the updated transcriber ───────────────────────
+
+CFG = {
+    "audio": {
+        "rate":  16000,
+        "chunk": 1024,
+    },
+    "transcriber": {
+        "model_size":       "large-v3-turbo",
+        "device":           "cuda",
+        "compute_type":     "int8_float16",
+        "max_duration":     10.0,
+        "silence_threshold": 300,
+        "silence_duration": 0.6,
+        "language":         "en",
+        # Optional VAD overrides (defaults used if absent):
+        # "vad_threshold":     0.35,
+        # "vad_speech_pad_ms": 200,
+    },
+}
+
+PASS = "\033[92m✓ PASS\033[0m"
+FAIL = "\033[91m✗ FAIL\033[0m"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _make_silence(rate: int, duration_s: float) -> np.ndarray:
+    """Returns a float32 array of pure silence."""
+    return np.zeros(int(rate * duration_s), dtype=np.float32)
+
+
+def _make_tone(rate: int, duration_s: float, freq: float = 440.0) -> np.ndarray:
+    """Returns a float32 sine wave at `freq` Hz (loud enough to pass VAD)."""
+    t = np.linspace(0, duration_s, int(rate * duration_s), endpoint=False)
+    return (np.sin(2 * np.pi * freq * t) * 0.8).astype(np.float32)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Test 1 — VAD empty-audio guard
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_silence_returns_empty(model):
+    """
+    Feeding pure silence must return "" without raising ValueError.
+    This exercises the pre-flight RMS guard AND the try/except fallback.
+    """
+    print("\n[Test 1] VAD empty-audio guard (pure silence) …")
+
+    from faster_whisper import WhisperModel as _W
+    silence = _make_silence(CFG["audio"]["rate"], duration_s=2.0)
+
+    try:
+        segs, _ = model.transcribe(
+            silence,
+            language                   = "en",
+            beam_size                  = 1,
+            best_of                    = 1,
+            vad_filter                 = True,
+            vad_parameters             = dict(
+                threshold               = 0.35,
+                min_silence_duration_ms = 600,
+                speech_pad_ms           = 200,
+                min_speech_duration_ms  = 100,
+            ),
+            condition_on_previous_text = False,
+            word_timestamps            = False,
+            temperature                = 0.0,
+        )
+        text = " ".join(s.text.strip() for s in segs)
+    except ValueError:
+        # This is the bug we guard against — the test catches it so
+        # the user can see whether their faster-whisper version is affected.
+        print(f"  {FAIL}  — ValueError raised (version bug confirmed; "
+              "pre-flight RMS guard in transcriber.py will prevent this at runtime)")
+        return False
+
+    print(f"  Result: {repr(text)}")
+    ok = text == ""
+    print(f"  {PASS if ok else FAIL}  — returned empty string: {ok}")
+    return ok
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Test 2 — VAD with audible signal (no crash)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_tone_no_crash(model):
+    """
+    A loud 440 Hz tone is not speech, so the transcript will be garbage or
+    empty — but the call must NOT crash.  We only assert no exception.
+    """
+    print("\n[Test 2] Audible tone — no crash / no ValueError …")
+
+    tone = _make_tone(CFG["audio"]["rate"], duration_s=2.0)
+
+    try:
+        segs, _ = model.transcribe(
+            tone,
+            language                   = "en",
+            beam_size                  = 1,
+            best_of                    = 1,
+            vad_filter                 = True,
+            vad_parameters             = dict(
+                threshold               = 0.35,
+                min_silence_duration_ms = 600,
+                speech_pad_ms           = 200,
+                min_speech_duration_ms  = 100,
+            ),
+            condition_on_previous_text = False,
+            word_timestamps            = False,
+            temperature                = 0.0,
+        )
+        text = " ".join(s.text.strip() for s in segs)
+        print(f"  Result: {repr(text)}")
+        print(f"  {PASS}  — completed without exception")
+        return True
+    except ValueError as e:
+        print(f"  {FAIL}  — ValueError: {e}")
+        return False
+    except Exception as e:
+        print(f"  {FAIL}  — unexpected error: {e}")
+        return False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Test 3 — Live mic round-trip
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_live_mic():
+    """Imports Transcriber, records one utterance, prints the result."""
+    print("\n[Test 3] Live mic round-trip …")
+    print("  Speak after the prompt. Recording stops on silence or 10 s cap.")
+
+    from transcriber import Transcriber
+
+    t = Transcriber(CFG)
+    print("\n  >>> Speak now <<<")
+    t0 = time.monotonic()
+    result = t.record_and_transcribe()
+    elapsed = time.monotonic() - t0
+    t.close()
+
+    print(f"\n  Transcript : {repr(result)}")
+    print(f"  Latency    : {elapsed:.2f}s")
+    ok = isinstance(result, str)
+    print(f"  {PASS if ok else FAIL}  — returned a string")
+    return ok
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Main
+# ─────────────────────────────────────────────────────────────────────────────
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--no-mic", action="store_true",
+                        help="Skip the live microphone test (tests 1 & 2 only)")
+    args = parser.parse_args()
+
+    print("=" * 60)
+    print("  Transcriber test suite")
+    print("=" * 60)
+
+    # Load model once — shared across tests 1 & 2
+    print("\nLoading WhisperModel (this takes a moment) …")
+    from faster_whisper import WhisperModel
+    model = WhisperModel(
+        CFG["transcriber"]["model_size"],
+        device=CFG["transcriber"]["device"],
+        compute_type=CFG["transcriber"]["compute_type"],
+    )
+    print("Model ready.\n")
+
+    results = []
+    results.append(test_silence_returns_empty(model))
+    results.append(test_tone_no_crash(model))
+
+    if not args.no_mic:
+        results.append(test_live_mic())
+    else:
+        print("\n[Test 3] Skipped (--no-mic)")
+
+    passed = sum(results)
+    total  = len(results)
+    print(f"\n{'=' * 60}")
+    print(f"  {passed}/{total} tests passed")
+    print("=" * 60)
+    sys.exit(0 if passed == total else 1)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,48 @@
+# ─────────────────────────────────────────
+#  local_agent  –  central configuration
+# ─────────────────────────────────────────
+
+audio:
+  rate: 16000
+  chunk: 1280
+
+wake_word:
+  model_path: assets/hey_bee_mo.onnx
+  threshold: 0.5
+  cooldown: 1.0
+
+transcriber:
+  model_size: large-v3-turbo
+  device: cuda
+  compute_type: int8_float16   # was float16
+  max_duration: 10.0
+  silence_threshold: 300
+  silence_duration: 0.6        # was 0.8 — snappier for chat
+  language: en
+
+brain:
+  google_api_key: "AIzaSyBye2MRAceYOcfHdR5eJHF2sJezpFUmgyo"        # leave blank to use GOOGLE_API_KEY env var
+  google_model: "gemma-4-26b-a4b-it"
+  thinking_level: "high"
+  model_path:      "D:/Users/user/Documents/B.M.O/assets/gemma-4-E2B-it-Q4_K_M.gguf"
+  modelfile_path:  "D:/Users/user/Documents/B.M.O/assets/modelfile.txt"
+  n_ctx:           8192      # was 2048 — needed to fit thinking + history + reply
+  n_gpu_layers:    -1
+  thinking_tokens: 512       # budget for the <think> block
+  reply_tokens:    300       # budget for the actual spoken answer
+
+speaker:
+  # ── Model ────────────────────────────────────────────────────────────────
+  model_id: "YatharthS/LuxTTS"          # HuggingFace repo id (downloaded on first run)
+  device: cuda                           # "cuda" | "cpu"  (auto-detected if omitted)
+
+  # ── Reference voice ──────────────────────────────────────────────────────
+  prompt_cache: "D:/Users/user/Documents/voice lines/bmo_prompt.pkl"
+
+  # ── Generation quality / speed ───────────────────────────────────────────
+  num_steps: 3      # diffusion steps — 3 is the sweet spot: fast, barely noticeable drop
+  t_shift:   0.9    # schedule shift; higher = slightly richer texture
+  speed:     1.0    # playback speed multiplier (1.0 = natural)
+
+  # ── Audio output ─────────────────────────────────────────────────────────
+  samplerate: 48000  # Hz — must match LuxTTS output rate
