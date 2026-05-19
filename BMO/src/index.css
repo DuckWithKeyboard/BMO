@@ -1,0 +1,781 @@
+/* ─── Custom Fonts ───────────────────────────────────────── */
+@font-face {
+  font-family: 'CrystalUniverse';
+  src: url('./assets/fonts/crystal-universe-font/CrystalUniverseRegular-w1V6n.otf') format('opentype'),
+       url('./assets/fonts/crystal-universe-font/CrystalUniverseRegular-7Begl.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'CrystalUniverse';
+  src: url('./assets/fonts/crystal-universe-font/CrystalUniverseOblique-0wE9.otf') format('opentype'),
+       url('./assets/fonts/crystal-universe-font/CrystalUniverseOblique-vmV6D.ttf') format('truetype');
+  font-weight: normal;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'HeartBubble';
+  src: url('./assets/fonts/heart_bubble/Heart Bubble.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* ─── FOUC prevention ────────────────────────────────────────
+   Keep the entire document invisible until styles and custom
+   fonts have been applied. renderer.js adds .ready on the
+   window `load` event so there is never a flash of raw content. */
+html {
+  visibility: hidden;
+}
+html.ready {
+  visibility: visible;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: 'HeartBubble', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  /* Whole window is draggable — interactive elements opt out below */
+  user-select: none;
+}
+
+.window {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* ─── Window Controls ────────────────────────────────────── */
+.window-controls {
+  position: fixed;
+  top: 12px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1000;
+  -webkit-app-region: no-drag;
+}
+
+.window-controls button {
+  all: unset;
+  cursor: pointer;
+  display: block;
+  flex-shrink: 0;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  -webkit-app-region: no-drag;
+  transition: opacity 0.15s ease, transform 0.12s ease;
+}
+
+.window-controls button:hover  { opacity: 0.80; transform: scale(1.10); }
+.window-controls button:active { opacity: 0.60; transform: scale(0.92); }
+
+/* min  — 1024×1024 → 38×38 */
+#min-btn {
+  width:  38px;
+  height: 38px;
+  background-image: url('./assets/icons/min.png');
+  --min-tx: 0px;
+  transform: translateX(var(--min-tx));
+  transition: transform 0.48s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease;
+}
+
+/* Override hover/active for min-btn so translateX and scale both apply */
+#min-btn:hover  { opacity: 0.80; transform: translateX(var(--min-tx)) scale(1.10); }
+#min-btn:active { opacity: 0.60; transform: translateX(var(--min-tx)) scale(0.92); }
+
+/* When playlist is open: slide min-btn left in sync with the queue pop */
+
+/* max  — 430×315 → 52×38  |  restore (two.png 480×480) fits via contain */
+#max-btn {
+  width:  52px;
+  height: 38px;
+  background-image: url('./assets/icons/one.png');
+}
+
+/* close — 1024×1024 → 38×38 */
+#close-btn {
+  width:  38px;
+  height: 38px;
+  background-image: url('./assets/icons/close.png');
+}
+
+/* ─── Everything interactive must opt out of drag ────────── */
+button,
+input,
+audio,
+a,
+.album-art-wrap,
+.progress-bar-track,
+.playlist-btn,
+.ctrl-btn,
+.playlist-item,
+.playlist-close-btn,
+.glass-box {
+  -webkit-app-region: no-drag;
+}
+
+/* ─── Window Body ────────────────────────────────────────── */
+.window-body {
+  position: relative;
+  height: 100%; /* 🔥 FIXED */
+  overflow: hidden;
+}
+
+/* ─── Background Video ───────────────────────────────────── */
+#bg-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ─── Glass Box — HORIZONTAL layout ─────────────────────── */
+.glass-box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) translateZ(0);
+
+  translate: 0px 0px;
+  transition:
+    translate      0.38s ease,
+    top            0.38s ease,
+    transform      0.38s ease,
+    width          0.38s ease,
+    padding        0.32s ease,
+    gap            0.32s ease,
+    border-radius  0.32s ease,
+    box-shadow     0.25s ease,
+    background     0.25s ease;
+  will-change: translate, top, transform, width;
+  overflow: visible;
+
+  width: 520px;
+  max-width: calc(100vw - 24px);
+
+  padding: 18px 20px;
+  box-sizing: border-box;
+  border-radius: 18px;
+
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 18px;
+
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.4);
+}
+
+.glass-box.pl-open {
+  translate: -107px 0;
+}
+
+/* ─── Left Panel — Album Art ─────────────────────────────── */
+.left-panel {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ─── Album Art ──────────────────────────────────────────── */
+.album-art-wrap {
+  position: relative;
+  width: 168px;
+  height: 168px;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: default;
+  background: #1a1a2e;
+
+  border: 2px solid rgba(255,255,255,0.22);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  flex-shrink: 0;
+}
+
+#album-video,
+#album-cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#album-cover {
+  display: none;
+  z-index: 1;
+}
+
+.album-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.load-hint {
+  font-family: 'HeartBubble', 'Courier New', Courier, monospace;
+  font-size: 12px;
+  color: #fff;
+  text-align: center;
+  text-shadow: 1px 1px 0 #000;
+}
+
+/* ─── Playlist Button ──────────────────── */
+.playlist-btn {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.playlist-btn:hover img {
+  filter: drop-shadow(0 0 6px rgba(255,255,255,0.4));
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+.playlist-btn:active img {
+  transform: scale(0.92);
+  opacity: 0.75;
+}
+
+.playlist-btn img {
+  width: 99px;
+  height: auto;
+  opacity: 0.85;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+/* ─── Right Panel — Info + Controls ─────────────────────── */
+.right-panel {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* whole glass-box shifts — no individual panel nudges needed */
+
+/* ─── Track Info ───────────────────────── */
+.track-info {
+  width: 100%;
+  overflow: hidden;
+  margin-bottom: auto;
+}
+
+.marquee-wrap {
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+  padding-bottom: 7px;
+  line-height: 1.4;
+}
+
+.marquee-text {
+  font-family: 'CrystalUniverse', 'Courier New', Courier, monospace;
+  font-size: 13px;
+  font-weight: normal;
+  color: #fff;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.marquee-text.scrolling {
+  animation: marquee-scroll 8s linear infinite;
+}
+
+@keyframes marquee-scroll {
+  0%   { transform: translateX(0%); }
+  100% { transform: translateX(-60%); }
+}
+
+.track-artist {
+  font-family: 'HeartBubble', 'Courier New', Courier, monospace;
+  font-size: 18px;
+  color: rgba(255,255,255,0.88);
+  margin-top: 2px;
+}
+
+/* ─── Progress Bar ───────────────────────── */
+.progress-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.progress-bar-track {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  background: rgba(0,0,0,0.30);
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.18);
+  cursor: pointer;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: rgba(255,255,255,0.75);
+}
+
+.progress-marker {
+  position: absolute;
+  top: 0;
+  transform: translate(-50%, -100%);
+  width: 70px;
+  pointer-events: none;
+}
+
+/* ─── Time Row ───────────────────────── */
+.time-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /* Force a real monospace font — demo fonts often omit digit glyphs */
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.70);
+  letter-spacing: 0.03em;
+}
+
+/* ─── Controls ───────────────────────── */
+.controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-shrink: 0;
+  will-change: transform;
+}
+
+.ctrl-btn {
+  all: unset;
+  cursor: pointer;
+}
+
+.ctrl-btn img {
+  width: 60px;
+}
+
+#play-btn img {
+  width: 68px;
+}
+
+/* ─── Playlist Panel ───────────────────── */
+.playlist-panel {
+  /* Sits OUTSIDE the glass-box to its right.
+     Still a child of .glass-box so it rides the whole-box translate for free. */
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 10px);
+  transform: translateY(-50%);
+
+  width: 205px;
+  max-height: 234px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  border-radius: 14px;
+  overflow: hidden;
+  z-index: 10;
+
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.30);
+
+  transform-origin: left center;
+  opacity: 0;
+  pointer-events: none;
+  scale: 0.88;
+}
+
+@keyframes queue-pop-in {
+  0%   { transform: translateY(-50%) translateX(20px); scale: 0.88; opacity: 0; }
+  55%  { transform: translateY(-50%) translateX(-5px);  scale: 1.03; opacity: 1; }
+  76%  { transform: translateY(-50%) translateX(2px);   scale: 0.99; }
+  100% { transform: translateY(-50%) translateX(0px);   scale: 1;    opacity: 1; }
+}
+
+@keyframes queue-pop-out {
+  0%   { transform: translateY(-50%) translateX(0px);  scale: 1;    opacity: 1; }
+  28%  { transform: translateY(-50%) translateX(-4px); scale: 1.02; }
+  100% { transform: translateY(-50%) translateX(20px); scale: 0.88; opacity: 0; }
+}
+
+.playlist-panel.open {
+  animation: queue-pop-in 0.48s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  pointer-events: auto;
+}
+
+.playlist-panel.closing {
+  animation: queue-pop-out 0.28s ease-in forwards;
+  pointer-events: none;
+}
+
+/* Header row */
+.playlist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.18);
+  flex-shrink: 0;
+}
+
+.playlist-title {
+  font-family: 'HeartBubble', sans-serif;
+  font-size: 14px;
+  color: #fff;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.4);
+}
+
+.playlist-close-btn {
+  all: unset;
+  cursor: pointer;
+  font-size: 14px;
+  color: rgba(255,255,255,0.65);
+  line-height: 1;
+  padding: 2px 4px;
+  transition: color 0.15s, transform 0.15s;
+  -webkit-app-region: no-drag;
+}
+.playlist-close-btn:hover  { color: #fff; transform: scale(1.2); }
+.playlist-close-btn:active { transform: scale(0.9); }
+
+/* Scrollable track list */
+.playlist-list {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  padding: 6px 0;
+}
+
+.playlist-list::-webkit-scrollbar       { width: 4px; }
+.playlist-list::-webkit-scrollbar-track { background: transparent; }
+.playlist-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 2px; }
+
+/* Individual track row */
+.playlist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+  -webkit-app-region: no-drag;
+}
+.playlist-item:hover  { background: rgba(255,255,255,0.10); }
+.playlist-item.active { background: rgba(255,255,255,0.18); }
+
+.playlist-item-num {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.45);
+  min-width: 18px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.playlist-item-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 5px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+.playlist-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.playlist-item-title {
+  font-family: 'HeartBubble', sans-serif;
+  font-size: 13px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-item-artist {
+  font-family: 'HeartBubble', sans-serif;
+  font-size: 13px;
+  color: rgba(255,255,255,0.50);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-empty {
+  font-family: 'HeartBubble', sans-serif;
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+  text-align: center;
+  padding: 20px 14px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   IDLE COLLAPSE — Mini Player
+   ═══════════════════════════════════════════════════════════ */
+
+/* Album art animates its own size independently */
+.album-art-wrap {
+  transition:
+    width         0.38s ease,
+    height        0.38s ease,
+    border-radius 0.32s ease;
+}
+
+/* Prevent sub-pixel text jitter during GPU-composited transforms */
+.marquee-text,
+.track-info,
+.right-panel {
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* Elements that collapse vertically when mini */
+.playlist-btn,
+.track-artist,
+.controls-row,
+.time-row {
+  overflow: hidden;
+  transition:
+    opacity    0.18s ease,
+    max-height 0.35s ease,
+    margin     0.35s ease;
+}
+
+.playlist-btn  { max-height: 60px;  }
+.track-artist  { max-height: 28px;  }
+.controls-row  { max-height: 80px;  }
+.time-row      { max-height: 24px;  }
+
+/* Flex gaps that need to shrink with their children */
+.left-panel       { transition: gap 0.44s ease; }
+.right-panel      { transition: gap 0.44s ease; }
+.progress-section { transition: gap 0.44s ease; }
+
+/* Window controls fade independently */
+.window-controls {
+  transition: opacity 0.22s ease, pointer-events 0s;
+}
+
+/* ── Mini state: docked pill at the bottom ─────────────────────────────────
+   Every property below is intentional. Justification for each:
+
+   POSITION & PLACEMENT
+   ─────────────────────
+   top: calc(100% - 20px)
+     Moves the element's top-edge anchor to 20px above the window floor.
+     Combined with translateY(-100%), this docks the pill's bottom edge at
+     exactly 20px from the bottom — a natural floating clearance.
+
+   transform: translate(-50%, -100%) translateZ(0)
+     -50%: centers the pill horizontally by shifting it left by half its own
+           width (since left: 50% pins the left edge at center).
+     -100%: lifts the element up by its full height so the bottom edge lands
+            at the `top` anchor instead of the top edge.
+     translateZ(0): promotes the element to its own GPU compositor layer,
+                    keeping the collapse/expand transition smooth.
+
+   translate: 0px 0px !important
+     The .pl-open state sets `translate: -107px 0` to shift the box left when
+     the playlist panel is open. !important ensures mini always wins and the
+     pill stays centered, regardless of whether .pl-open is also present.
+
+   SIZE & SPACING
+   ───────────────
+   width: 340px
+     Narrower than the 520px full player. Wide enough for 80px album art +
+     readable title + full-width progress bar; narrow enough to read as a
+     compact pill rather than a shrunken player.
+
+   padding: 9px 14px
+     Reduced from 18px/20px. Keeps enough breathing room around the content
+     without inflating the pill height. The 14px horizontal padding aligns
+     with the progress bar ends staying inset from the pill edges.
+
+   gap: 12px
+     The flex-row gap between left-panel (album art) and right-panel
+     (title + bar). 12px at this scale feels balanced — not cramped, not loose.
+
+   border-radius: 32px
+     A high radius on the ~58px tall pill gives fully rounded pill-shaped ends
+     without going circular. 32px ≈ half the pill height, which is the point
+     where vertical ends become perfect semicircles.
+
+   VISUAL / GLASS EFFECT
+   ──────────────────────
+   background: rgba(255,255,255,0.18)
+     Slightly more opaque than the full player (0.12). The pill sits at the
+     bottom of a busy background video; a bit more opacity keeps it legible
+     without breaking the glass aesthetic.
+
+   box-shadow: 0 -6px 32px ... / 0 2px 8px ... / inset 0 1px 0 ...
+     The negative-Y shadow (-6px) casts the glow upward toward the screen
+     center, which is natural for a bottom-docked element. The small positive-Y
+     shadow (2px) grounds the pill against the window edge. The inset top
+     highlight preserves the glass bevel from the full player.
+   ─────────────────────────────────────────────────────────────────────────── */
+.glass-box.mini {
+  top: calc(100% - 20px);
+  transform: translate(-50%, -100%) translateZ(0);
+  translate: 0px 0px !important;
+
+  width: 340px;
+  padding: 9px 14px;
+  gap: 12px;
+  border-radius: 32px;
+
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 -6px 32px rgba(0,0,0,0.30),
+    0  2px 8px  rgba(0,0,0,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.50);
+}
+
+/* width/height: 80px — still large enough to recognize album art at a glance
+   but compact enough to fit the pill without dominating it.
+   border-radius: 8px — slightly rounder than the normal 10px to complement
+   the pill's rounded form; square-ish art reads better than a circle. */
+.glass-box.mini .album-art-wrap {
+  width:  80px;
+  height: 80px;
+  border-radius: 8px;
+}
+
+/* gap: 0 — in normal mode the left-panel gap spaces album art from the
+   playlist button below it. In mini the playlist button collapses to
+   max-height:0, but the gap would remain as dead space. Zero it out. */
+.glass-box.mini .left-panel { gap: 0; }
+
+/* gap: 3px — reduced from 10px; only title + progress bar remain visible,
+   they need to be close but not merged.
+   justify-content: center — overrides flex-end from the normal state. With
+   flex-end the items would stack at the bottom of the short mini container;
+   center keeps them vertically centred in the pill. */
+.glass-box.mini .right-panel { gap: 3px; justify-content: center; }
+
+/* gap: 0 — the progress-section normally has gap:5px between the bar and the
+   time row. In mini the time row collapses to max-height:0; keeping the gap
+   would leave invisible dead space below the bar. */
+.glass-box.mini .progress-section { gap: 0; }
+
+/* max-height: 0 — collapses each element's rendered height to zero. Works
+   because these elements have overflow:hidden set in their base rule; this
+   allows a CSS transition (unlike display:none which snaps immediately).
+   opacity: 0 — fades out independently; the 0.18s opacity transition fires
+   faster than the 0.35s max-height collapse so elements fade before they
+   fully close, which looks cleaner than collapsing opaque.
+   pointer-events: none — prevents hover/click on invisible elements from
+   accidentally triggering handlers underneath.
+   margin: 0 — some elements (e.g. .track-artist has margin-top:4px) carry
+   default margins that still affect layout at max-height:0. Zero them out. */
+.glass-box.mini .playlist-btn,
+.glass-box.mini .track-artist,
+.glass-box.mini .controls-row,
+.glass-box.mini .time-row {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  margin: 0;
+}
+
+/* Suppress album-art hover overlay in mini mode */
+.glass-box.mini .album-overlay {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+/* padding-bottom: 3px — the full marquee-wrap has padding-bottom:7px for
+   spacing between the title and the artist text below. In mini the artist is
+   hidden, so 7px wastes pill height. 3px keeps minimal breathing room. */
+.glass-box.mini {
+  padding-bottom: 7px;
+}
+
+/* Reset the marquee to its start position when (and only when) the element
+   does NOT have .scrolling — i.e. the brief window between enterMini()
+   stripping the class and re-adding it after the reflow.
+   The .scrolling animation is intentionally allowed to run in mini mode;
+   enterMini() removes then re-adds .scrolling so it always restarts from 0. */
+.glass-box.mini .marquee-text:not(.scrolling) {
+  transform: translateX(0);
+}
+
+/* margin-bottom: 0 — in normal mode .track-info has margin-bottom:auto which
+   pushes it to the top of the flex column. In mini, justify-content:center is
+   set on .right-panel, but margin-bottom:auto defeats that by consuming all
+   free space and pinning the element to the top anyway. Zero it. */
+.glass-box.mini .track-info {
+  margin-bottom: 0;
+}
+
+/* height: 5px — reduced from 8px. A thinner bar is proportionally correct
+   inside the compact pill and still clearly shows playback progress. */
+.glass-box.mini .progress-bar-track {
+  height: 5px;
+}
+
+/* Window controls vanish with the main UI */
+body.mini .window-controls {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* On narrow viewports the overshoot spring would cause layout recalculations
+   that make text and album art jump during collapse. Override all timings to
+   a flat ease so the transition is smooth even at small sizes. */
+@media (max-width: 768px) {
+  .glass-box,
+  .album-art-wrap {
+    transition-timing-function: ease !important;
+  }
+}
+
+/* ── Wake-up shimmer: subtle glow on the mini pill ──────── */
+@keyframes mini-pulse {
+  0%, 100% { box-shadow: 0 -6px 32px rgba(0,0,0,0.30), 0 2px 8px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.50); }
+  50%       { box-shadow: 0 -6px 40px rgba(0,0,0,0.36), 0 2px 12px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.60); }
+}
+
+.glass-box.mini {
+  animation: mini-pulse 3s ease-in-out infinite;
+}

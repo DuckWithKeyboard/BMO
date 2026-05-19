@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>BMO O.S.</title>
+  </head>
+  <body>
+
+    <!-- ─── Splash Screen ───────────────────────────────────── -->
+    <div id="splash-screen">
+      <div id="splash-content">
+        <img id="splash-gif" src="" alt="Loading…" />
+        <h1 id="splash-title">BMO O.S.</h1>
+        <img id="splash-sword" src="" alt="" aria-hidden="true" />
+      </div>
+    </div>
+
+    <!-- ─── Desktop ─────────────────────────────────────────── -->
+    <div id="desktop">
+      <div id="desktop-icons">
+
+        <!-- Each .desktop-item = button (the pressable icon) + label below -->
+
+        <div class="desktop-item">
+          <button class="desktop-icon" data-app="music" aria-label="Music">
+            <img id="icon-music" src="" alt="" />
+          </button>
+          <span class="desktop-label">Music</span>
+        </div>
+
+        <div class="desktop-item">
+          <button class="desktop-icon" data-app="bmo" aria-label="BMO">
+            <img id="icon-bmo" src="" alt="" />
+          </button>
+          <span class="desktop-label">BMO</span>
+        </div>
+
+        <div class="desktop-item">
+          <button class="desktop-icon" data-app="internet" aria-label="Internet">
+            <img id="icon-internet" src="" alt="" />
+          </button>
+          <span class="desktop-label">Internet</span>
+        </div>
+
+        <div class="desktop-item">
+          <button class="desktop-folder" data-folder="games" aria-label="Games folder" aria-expanded="false">
+            <img id="icon-games" src="" alt="" />
+          </button>
+          <span class="desktop-label">Games</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ─── Folder glass menu ───────────────────────────────── -->
+    <div id="folder-menu" class="folder-menu" aria-hidden="true">
+      <div class="folder-menu-glass">
+        <div class="folder-menu-header">
+          <span class="folder-menu-title"></span>
+          <button class="folder-menu-close" aria-label="Close">✕</button>
+        </div>
+        <div class="folder-menu-icons"></div>
+      </div>
+</div>
+  </body>
+</html>

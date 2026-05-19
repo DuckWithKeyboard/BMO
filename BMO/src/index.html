@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Music Player</title>
+
+  <meta http-equiv="Content-Security-Policy"
+        content="
+          default-src 'self' data:;
+          img-src 'self' data: blob:;
+          media-src 'self' media: blob: data:;
+          script-src 'self' 'unsafe-inline' 'unsafe-eval';
+          style-src 'self' 'unsafe-inline' blob:;
+        ">
+</head>
+
+<body>
+
+  <div class="window">
+
+    <!-- 🔥 Drag region -->
+    <div class="window-drag-region"></div>
+
+    <!-- 🔥 Floating controls -->
+    <div class="window-controls">
+      <button id="min-btn"></button>
+      <button id="max-btn"></button>
+      <button id="close-btn"></button>
+    </div>
+
+    <div class="window-body">
+
+      <video id="bg-video" autoplay loop muted playsinline></video>
+
+      <div class="glass-box">
+
+        <div class="left-panel">
+          <div class="album-art-wrap" id="album-art-wrap">
+            <video id="album-video" autoplay loop muted playsinline></video>
+            <img id="album-cover" src="" alt="Album Cover" />
+            <div class="album-overlay">
+              <span class="load-hint">&#9835; click to load</span>
+            </div>
+          </div>
+
+          <button class="playlist-btn" id="playlist-toggle-btn">
+            <img id="playlist-icon" alt="Playlist" draggable="false" />
+          </button>
+        </div>
+
+        <div class="right-panel">
+
+          <div class="track-info">
+            <div class="marquee-wrap">
+              <span class="marquee-text" id="track-title">No Track Loaded</span>
+            </div>
+            <div class="track-artist" id="track-artist">—</div>
+          </div>
+
+          <div class="progress-section">
+            <div class="progress-bar-track" id="progress-track">
+              <div class="progress-bar-fill" id="progress-fill"></div>
+              <img class="progress-marker" id="progress-marker" src="" />
+            </div>
+            <div class="time-row">
+              <span id="current-time">0:00</span>
+              <span id="total-time">0:00</span>
+            </div>
+          </div>
+
+          <div class="controls-row">
+            <button class="ctrl-btn" id="prev-btn"><img /></button>
+            <button class="ctrl-btn" id="play-btn"><img id="play-icon"/></button>
+            <button class="ctrl-btn" id="next-btn"><img /></button>
+          </div>
+
+        </div>
+
+        <audio id="audio-player"></audio>
+        <input type="file" id="file-input" accept="audio/*" multiple style="display:none;" />
+
+        <div class="playlist-panel" id="playlist-panel">
+          <div class="playlist-header">
+            <span class="playlist-title">&#9835; Queue</span>
+            <button class="playlist-close-btn" id="playlist-close-btn">&#x2715;</button>
+          </div>
+          <div class="playlist-list" id="playlist-list"></div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>

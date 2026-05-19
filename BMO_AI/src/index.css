@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+/* ── Reset ───────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #0d1117;
+}
+
+/* ── Background display ──────────────────────────────────── */
+#bg-display {
+  position: fixed;
+  inset: 0;
+  background-color: #111a18;
+}
+
+/*
+ * Single <img> display element.
+ *
+ * Setting img.src uses the same decode cache that img.decode() populates,
+ * so every frame swap is guaranteed to paint from an already-decoded bitmap —
+ * no blank frames between state changes.
+ */
+
+#display {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill; /* matches the old background-size: 100% 100% behaviour */
+}
