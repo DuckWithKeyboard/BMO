@@ -21,7 +21,7 @@ transcriber:
   language: en
 
 brain:
-  google_api_key: "AIzaSyBye2MRAceYOcfHdR5eJHF2sJezpFUmgyo"        # leave blank to use GOOGLE_API_KEY env var
+  google_api_key: ""        # leave blank to use GOOGLE_API_KEY env var
   google_model: "gemma-4-26b-a4b-it"
   thinking_level: "high"
   model_path:      "D:/Users/user/Documents/B.M.O/assets/gemma-4-E2B-it-Q4_K_M.gguf"
