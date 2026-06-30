@@ -25,6 +25,8 @@
 </div>
 
 ---
+## To watch the demo click on the image.
+
 [![Watch the video](https://img.youtube.com/vi/C_x6TbPdiKw/hqdefault.jpg)](https://www.youtube.com/watch?v=C_x6TbPdiKw)
 ## ✦ What Is This?
 
