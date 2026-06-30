@@ -25,7 +25,7 @@
 </div>
 
 ---
-[![Watch the video](https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg)](https://www.youtube.com/watch?v=C_x6TbPdiKw)
+[![Watch the video](https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg)](https://www.youtube.com/watch?v=C_x6TbPdiKw?si=YPcAyDhlEEp9OmTs)
 ## ✦ What Is This?
 
 **BMO** is not a single application. It is a fully self-contained, pixel-polished **desktop operating environment** — themed after BMO, the living game console from *Adventure Time* — composed of four purpose-built modules that boot together, communicate over native IPC and WebSocket, and present a unified experience to the user.
