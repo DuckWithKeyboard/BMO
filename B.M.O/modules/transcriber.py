@@ -7,6 +7,12 @@ Records from the mic until either:
 
 Then hands the buffer to Faster-Whisper and returns the transcript string.
 The WhisperModel is loaded once at construction time so the hot path is fast.
+
+record_and_transcribe() accepts an optional `on_audio_captured` callback that
+fires immediately after the recording loop ends (silence / max-duration hit),
+BEFORE Faster-Whisper processes the buffer.  main.py uses this to emit the
+TRANSCRIBING WebSocket event so the Electron frontend can play a "processing"
+sound while the model runs.
 """
 
 import time
@@ -33,11 +39,12 @@ class Transcriber:
         # VAD params — synced to silence_duration so the recording loop and
         # Whisper's internal Silero VAD agree on what counts as silence.
         # threshold=0.35 is more sensitive than the default 0.5, which misses
-        # normal mic input. speech_pad_ms=200 prevents clipping the first syllable.
+        # normal mic input. speech_pad_ms=300 prevents clipping the first syllable
+        # and gives abrupt utterance onsets a bit more leading context.
         self._vad_params = dict(
             threshold               = tr_cfg.get("vad_threshold", 0.35),
             min_silence_duration_ms = int(self.silence_duration * 1000),
-            speech_pad_ms           = tr_cfg.get("vad_speech_pad_ms", 200),
+            speech_pad_ms           = tr_cfg.get("vad_speech_pad_ms", 300),
             min_speech_duration_ms  = 100,
         )
 
@@ -46,6 +53,11 @@ class Transcriber:
             device=tr_cfg["device"],
             compute_type=tr_cfg["compute_type"],
         )
+
+        # Number of consecutive silent chunks required to end recording.
+        # Derived from silence_duration so the threshold is always in sync with
+        # the config value — no separate knob to keep in sync.
+        self._silence_chunks = int(self.silence_duration * self.rate / aud_cfg["chunk"])
 
         self._pa   = pyaudio.PyAudio()
         self._ring = np.empty(int(self.max_duration * self.rate), dtype=np.float32)
@@ -56,17 +68,25 @@ class Transcriber:
 
     # ── public API ────────────────────────────────────────────────────────
 
-    def record_and_transcribe(self) -> str:
+    def record_and_transcribe(self, on_audio_captured=None) -> str:
         """
         Open the mic, capture audio, transcribe, return text.
         Mic is opened and closed on every call so it never conflicts
         with the wake-word stream.
+
+        on_audio_captured : optional zero-argument callable.
+            Fired immediately after the recording loop exits (silence or
+            max-duration), BEFORE Faster-Whisper processes the buffer.
+            Use this to emit a TRANSCRIBING event so the frontend can play
+            a processing sound while the model runs.
+            If the buffer is empty (nothing recorded), this callback is
+            NOT called — there is nothing to transcribe.
         """
-        write_pos   = 0
-        speech_seen = False   # silence timer only starts after first speech detected
-        last_speech = None
-        deadline    = time.monotonic() + self.max_duration
-        ring        = self._ring
+        write_pos     = 0
+        speech_seen   = False  # silence counter only starts after first speech detected
+        silent_chunks = 0      # consecutive below-threshold chunks since last speech
+        deadline      = time.monotonic() + self.max_duration
+        ring          = self._ring
 
         stream = self._pa.open(
             format=pyaudio.paInt16,
@@ -82,14 +102,19 @@ class Transcriber:
                 frame = np.frombuffer(raw, dtype=np.int16)
                 rms   = _rms(frame)
 
-                end = write_pos + len(frame)
-                ring[write_pos:end] = frame * _INT16_SCALE
+                end = min(write_pos + len(frame), len(ring))
+                ring[write_pos:end] = (frame * _INT16_SCALE)[:end - write_pos]
                 write_pos = end
 
                 if rms > self.silence_threshold:
-                    speech_seen = True
-                    last_speech = time.monotonic()
-                elif speech_seen and time.monotonic() - last_speech > self.silence_duration:
+                    speech_seen   = True
+                    silent_chunks = 0                      # reset on any speech chunk
+                elif speech_seen:
+                    silent_chunks += 1
+                    if silent_chunks >= self._silence_chunks:  # N consecutive silent chunks → done
+                        break
+
+                if write_pos >= len(ring):
                     break
 
         finally:
@@ -107,17 +132,30 @@ class Transcriber:
         if float(np.sqrt(np.mean(full_audio.astype(np.float64) ** 2))) < _MIN_AUDIO_RMS:
             return ""
 
+        # ── Notify caller that audio is captured and Whisper is about to run ──
+        # This is the right moment for the frontend to play a "processing" sound:
+        # recording is done, model inference is starting.
+        if on_audio_captured is not None:
+            try:
+                on_audio_captured()
+            except Exception:
+                pass   # never let a callback crash the transcription path
+
         try:
             segments, _ = self._model.transcribe(
                 full_audio,
                 language                   = self.language,
-                beam_size                  = 1,
+                beam_size                  = 2,
                 best_of                    = 1,
                 vad_filter                 = True,
                 vad_parameters             = self._vad_params,
                 condition_on_previous_text = False,
                 word_timestamps            = False,
                 temperature                = 0.0,
+                suppress_blank             = True,
+                log_prob_threshold         = -1.0,
+                no_speech_threshold        = 0.45,
+                initial_prompt             = "Casual conversation with BMO.",
             )
             return " ".join(seg.text.strip() for seg in segments)
 
@@ -150,13 +188,17 @@ class Transcriber:
             segs, _ = self._model.transcribe(
                 dummy,
                 language                   = self.language,
-                beam_size                  = 1,
+                beam_size                  = 2,
                 best_of                    = 1,
                 vad_filter                 = True,
                 vad_parameters             = self._vad_params,
                 condition_on_previous_text = False,
                 word_timestamps            = False,
                 temperature                = 0.0,
+                suppress_blank             = True,
+                log_prob_threshold         = -1.0,
+                no_speech_threshold        = 0.45,
+                initial_prompt             = "Casual conversation with BMO.",
             )
             list(segs)  # drain the generator — transcribe() is lazy
         except ValueError:

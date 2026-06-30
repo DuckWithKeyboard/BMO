@@ -26,6 +26,7 @@
    Keep the entire document invisible until styles and custom
    fonts have been applied. renderer.js adds .ready on the
    window `load` event so there is never a flash of raw content. */
+* { -webkit-tap-highlight-color: transparent; }
 html {
   visibility: hidden;
 }

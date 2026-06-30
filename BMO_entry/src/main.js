@@ -9,8 +9,10 @@ if (require('electron-squirrel-startup')) {
 
 // ─── App exe paths ────────────────────────────────────────────
 const APP_EXES = {
-  music:    'D:\\BMO\\out\\bmo-win32-x64\\bmo.exe',
+  music:    'D:\\BMO\\out\\bmo-win32-x64\\music_player.exe',
   internet: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  bmo:      'D:\\BMO_AI\\out\\B.M.O-win32-x64\\BMO.exe',
+  overlay:  'D:\\bmo_overlay\\out\\bmo_overlay-win32-x64\\bmo_overlay.exe',
   silksong: 'D:\\Users\\user\\Downloads\\Hollow-Knight-Silksong-SteamRIP.com\\Hollow Knight Silksong\\Hollow Knight Silksong.exe',
   forza:    'D:\\Forza.Horizon.5.v1.614.70.0.Incl.ALL.DLC\\Forza.Horizon.5.v1.614.70.0.Incl.ALL.DLC\\56789OIUYTUIOP[][POIUYTYUIOPBBNVBNJKL M,..exe',
 };
@@ -20,8 +22,8 @@ let osWindow = null;
 
 const createWindow = () => {
   osWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    fullscreen: true,
+    frame:      false,
     webPreferences: {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
     },
@@ -43,6 +45,11 @@ function onChildClosed() {
     osWindow.webContents.send('app-closed');
   }
 }
+
+// ─── IPC: quit the app ────────────────────────────────────────
+ipcMain.on('quit-app', () => {
+  app.quit();
+});
 
 // ─── IPC: launch exe ─────────────────────────────────────────
 // Uses spawn with the exe's own directory as cwd so games that

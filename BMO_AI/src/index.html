@@ -9,5 +9,12 @@
       <!-- Single img element — src swaps benefit from img.decode() pre-cache -->
       <img id="display" alt="" />
     </div>
+
+    <!--
+      Capture overlay — shown in the top-left corner while BMO is analysing a
+      captured image.  Hidden by default; renderer shows/hides it via JS.
+      z-index places it above #bg-display (z-index: auto/0).
+    -->
+    <img id="capture-overlay" alt="captured image" />
   </body>
 </html>

@@ -1,6 +1,7 @@
-const { app, BrowserWindow, session } = require('electron');
+const { app, BrowserWindow, session, ipcMain, protocol } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
+const fs   = require('fs');
 
 if (require('electron-squirrel-startup')) {
   app.quit();
@@ -57,7 +58,7 @@ const SAFE_CSP = [
   "style-src    'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src     'self' https://fonts.gstatic.com",
   "connect-src  'self' ws://0.0.0.0:3000 ws://localhost:3000 ws://localhost:7878",
-  "img-src      'self' data: blob:",
+  "img-src      'self' data: blob: bmo:",
 ].join('; ');
 
 function applyCSP() {
@@ -79,15 +80,14 @@ function applyCSP() {
 
 const createWindow = () => {
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    fullscreen: true,
+    frame: false,
     webPreferences: {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
     },
   });
 
   mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
-  mainWindow.webContents.openDevTools();
 };
 
 // ── App lifecycle ─────────────────────────────────────────────────────────
@@ -95,7 +95,35 @@ const createWindow = () => {
 app.whenReady().then(() => {
   startPythonBackend();
   applyCSP();
+
+  // ── bmo:// — serves local files captured by the Python backend ───────────
+  // Usage in renderer: 'bmo:///' + filePath.replace(/\\/g, '/')
+  //   Triple-slash keeps host empty so the full Windows/POSIX path is in pathname.
+  // Handles both Windows (D:/…) and POSIX (/tmp/…) paths.
+  protocol.registerBufferProtocol('bmo', (request, callback) => {
+    // Use URL parsing so "bmo:///C:/foo/bar.png" → pathname "/C:/foo/bar.png"
+    // then strip the leading slash to get the real Windows/POSIX path.
+    // Slicing the raw string dropped the drive-letter colon because the URL
+    // engine parsed "bmo://C:/path" as host="C", path="/path".
+    const rawPath = decodeURIComponent(new URL(request.url).pathname.replace(/^\//, ''));
+    try {
+      const data     = fs.readFileSync(rawPath);
+      const ext      = path.extname(rawPath).toLowerCase();
+      const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
+      callback({ mimeType, data });
+    } catch (err) {
+      console.error('[BMO Protocol] Cannot read capture file:', rawPath, err.message);
+      callback({ error: -6 }); // NET::ERR_FILE_NOT_FOUND
+    }
+  });
+
   createWindow();
+
+  // Renderer sends this when SHUTTING_DOWN is received over WebSocket.
+  ipcMain.on('quit-app', () => {
+    killPythonBackend();
+    app.quit();
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

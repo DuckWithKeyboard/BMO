@@ -13,6 +13,12 @@ rules.push({
   type: 'asset/resource',
 });
 
+// Audio — same treatment as images; import gives you the resolved URL.
+rules.push({
+  test: /\.(wav|mp3|ogg|flac)$/i,
+  type: 'asset/resource',
+});
+
 module.exports = {
   module: {
     rules,

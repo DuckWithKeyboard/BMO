@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 
 /* ── Reset ───────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent;}
 
 html, body {
   width: 100%; height: 100%;
@@ -30,4 +30,36 @@ html, body {
   width: 100%;
   height: 100%;
   object-fit: fill; /* matches the old background-size: 100% 100% behaviour */
+}
+
+/* ── Capture overlay ─────────────────────────────────────── */
+/*
+ * Shown in the top-left corner while BMO analyses a captured image.
+ * z-index: 10 places it above #bg-display (which has no explicit z-index).
+ * Hidden by default; renderer.js toggles display via showCaptureOverlay()
+ * and hideCaptureOverlay().
+ */
+#capture-overlay {
+  display:       none;          /* hidden until THINKING_WITH_IMAGE arrives  */
+  position:      fixed;
+  top:           20px;
+  left:          20px;
+  z-index:       10;
+
+  width:         320px;
+  max-width:     30vw;          /* never wider than 30 % of the screen       */
+  height:        auto;
+  object-fit:    contain;
+
+  border-radius: 6px;
+  border:        2px solid rgba(255, 255, 255, 0.18);
+  box-shadow:    0 0 18px rgba(0, 0, 0, 0.65);
+
+  /* subtle fade-in when it appears */
+  animation: capture-fade-in 0.25s ease-out;
+}
+
+@keyframes capture-fade-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1);    }
 }

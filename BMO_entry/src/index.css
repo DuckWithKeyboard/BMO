@@ -66,6 +66,7 @@
   box-sizing: border-box;
   margin:  0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -382,4 +383,13 @@ body {
   flex-wrap:       wrap;
   justify-content: center;
   gap:             1.25rem;
+}
+
+
+/* ── 8. Exit Button (top-right) ───────────────────────────── */
+
+#exit-container {
+  position: absolute;
+  top:      var(--icon-pad);
+  right:    var(--icon-pad);
 }

@@ -1,16 +1,23 @@
 const { FusesPlugin } = require('@electron-forge/plugin-fuses');
 const { FuseV1Options, FuseVersion } = require('@electron/fuses');
+const path = require('path');
 
 module.exports = {
   packagerConfig: {
     asar: true,
+    name: 'B.M.O.',
+    executableName: 'BMO',
+    icon: path.resolve('src/assets/images/bmo'),  // No extension — Forge appends it per platform
   },
   rebuildConfig: {},
   makers: [
     {
       name: '@electron-forge/maker-squirrel',
-      config: {},
-    },
+  config: {
+    name: 'BMO',
+    setupIcon: path.resolve('src/assets/images/bmo.ico'), // ← explicit .ico required
+  },
+},
     {
       name: '@electron-forge/maker-zip',
       platforms: ['darwin'],
@@ -48,8 +55,6 @@ module.exports = {
         },
       },
     },
-    // Fuses are used to enable/disable various Electron functionality
-    // at package time, before code signing the application
     new FusesPlugin({
       version: FuseVersion.V1,
       [FuseV1Options.RunAsNode]: false,

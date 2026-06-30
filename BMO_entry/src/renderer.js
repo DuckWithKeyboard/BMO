@@ -15,6 +15,10 @@ import bmoImg      from './assets/icons/bmo.jpg';
 import gamesImg    from './assets/icons/games.jpg';
 import internetImg from './assets/icons/internet.jpg';
 
+// Exit icon
+import exitImg   from 'D:/BMO_entry/src/assets/icons/exit.jpg';
+import overlayImg from 'D:/BMO_entry/src/assets/icons/overlay.jpg';
+
 // Folder icons
 import messengerImg from 'D:/BMO_entry/src/assets/icons/messenger.jpeg';
 import silksongImg  from 'D:/BMO_entry/src/assets/icons/silksong.ico';
@@ -87,6 +91,8 @@ document.getElementById('icon-music').src    = musicImg;
 document.getElementById('icon-bmo').src      = bmoImg;
 document.getElementById('icon-games').src    = gamesImg;
 document.getElementById('icon-internet').src = internetImg;
+document.getElementById('icon-overlay').src  = overlayImg;
+document.getElementById('icon-exit').src     = exitImg;
 
 // ─── Desktop app icon click handlers ─────────────────────────
 document.querySelectorAll('.desktop-icon[data-app]').forEach(btn => {
@@ -95,6 +101,12 @@ document.querySelectorAll('.desktop-icon[data-app]').forEach(btn => {
     window.bmoOS.openApp(btn.dataset.app);
   });
 });
+
+// ─── Exit icon click handler ──────────────────────────────────
+document.querySelector('.desktop-icon[data-action="exit"]')
+  ?.addEventListener('click', () => {
+    window.bmoOS.quitApp();
+  });
 
 // ─── App close handler ────────────────────────────────────────
 window.bmoOS.onAppClosed(() => {
@@ -181,7 +193,7 @@ document.addEventListener('keydown', e => {
 });
 
 // ─── Initial splash dismissal + wallpaper reveal ─────────────
-const HOLD_MS = 10000;
+const HOLD_MS = 8000;
 
 window.addEventListener('load', () => {
   if (WALLPAPERS.length > 0) {

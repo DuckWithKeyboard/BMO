@@ -43,14 +43,32 @@
         </div>
 
         <div class="desktop-item">
+          <button class="desktop-icon" data-app="overlay" aria-label="Overlay">
+            <img id="icon-overlay" src="" alt="" />
+          </button>
+          <span class="desktop-label">Overlay</span>
+        </div>
+
+        <div class="desktop-item">
           <button class="desktop-folder" data-folder="games" aria-label="Games folder" aria-expanded="false">
             <img id="icon-games" src="" alt="" />
           </button>
           <span class="desktop-label">Games</span>
         </div>
 
+      </div><!-- /#desktop-icons -->
+
+      <!-- ─── Exit button — pinned top-right ──────────────── -->
+      <div id="exit-container">
+        <div class="desktop-item">
+          <button class="desktop-icon" data-action="exit" aria-label="Exit">
+            <img id="icon-exit" src="" alt="" />
+          </button>
+          <span class="desktop-label">Exit</span>
+        </div>
       </div>
-    </div>
+
+    </div><!-- /#desktop -->
 
     <!-- ─── Folder glass menu ───────────────────────────────── -->
     <div id="folder-menu" class="folder-menu" aria-hidden="true">
